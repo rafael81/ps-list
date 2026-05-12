@@ -80,6 +80,51 @@ const extractExecutablePath = commandLine => {
 	return '';
 };
 
+const stripLeadingToken = commandLine => {
+	if (!commandLine) {
+		return '';
+	}
+
+	const trimmedCommandLine = commandLine.trim();
+
+	if (trimmedCommandLine.startsWith('"')) {
+		const closingQuoteIndex = trimmedCommandLine.indexOf('"', 1);
+		return closingQuoteIndex === -1 ? '' : trimmedCommandLine.slice(closingQuoteIndex + 1).trim();
+	}
+
+	const spaceIndex = trimmedCommandLine.indexOf(' ');
+	return spaceIndex === -1 ? '' : trimmedCommandLine.slice(spaceIndex + 1).trim();
+};
+
+const extractProcessArguments = (commandLine, executablePath) => {
+	if (!commandLine) {
+		return '';
+	}
+
+	const trimmedCommandLine = commandLine.trim();
+
+	if (executablePath) {
+		if (trimmedCommandLine === executablePath) {
+			return '';
+		}
+
+		if (trimmedCommandLine.startsWith(`${executablePath} `)) {
+			return trimmedCommandLine.slice(executablePath.length + 1).trim();
+		}
+
+		const quotedExecutablePath = `"${executablePath}"`;
+		if (trimmedCommandLine === quotedExecutablePath) {
+			return '';
+		}
+
+		if (trimmedCommandLine.startsWith(`${quotedExecutablePath} `)) {
+			return trimmedCommandLine.slice(quotedExecutablePath.length + 1).trim();
+		}
+	}
+
+	return stripLeadingToken(trimmedCommandLine);
+};
+
 // Resolve executable path - simple approach
 const resolveExecutablePath = (operatingSystemPlatform, processId, commandLine) => {
 	// On Linux, try /proc/{pid}/exe first for accurate path
@@ -127,6 +172,7 @@ const parseProcessFields = ({processId, parentProcessId, userId, cpuUsage, memor
 
 	// Resolve executable path from command line
 	const resolvedExecutablePath = resolveExecutablePath(process.platform, parsedProcessId, command);
+	const processArguments = extractProcessArguments(command, resolvedExecutablePath);
 
 	// Derive process name: prefer basename of path, fallback to command name
 	const derivedProcessName = resolvedExecutablePath ? path.basename(resolvedExecutablePath) : (commandName || '');
@@ -139,6 +185,7 @@ const parseProcessFields = ({processId, parentProcessId, userId, cpuUsage, memor
 		memory: parsedMemoryUsagePercentage,
 		name: derivedProcessName,
 		path: resolvedExecutablePath,
+		args: processArguments,
 		startTime: makeStartTime(startTimeString),
 		cmd: command || '',
 	};

@@ -30,6 +30,7 @@ test('main', async t => {
 			&& typeof x.memory === 'number'
 			&& (typeof x.uid === 'number' || x.uid === undefined)
 			&& typeof x.path === 'string'
+			&& typeof x.args === 'string'
 			&& (x.startTime instanceof Date || x.startTime === undefined)));
 
 		// Verify Date objects are valid (not Invalid Date)
@@ -68,6 +69,7 @@ test('custom binary', async t => {
 
 	if (!isWindows) {
 		t.is(record.cmd, `${nodeBinaryName} ${arguments_.join(' ')}`);
+		t.is(record.args, arguments_.join(' '));
 		t.is(record.uid, process.getuid());
 		// Path can be empty (relative command) or absolute (CI environments)
 		t.true(typeof record.path === 'string', 'Path should be a string');
@@ -112,7 +114,7 @@ test('path resolution', async t => {
 	}
 
 	// Find any node process - should have path resolved
-	const nodeProcess = list.find(x => x.name === 'node' || x.name === nodeBinaryName);
+	const nodeProcess = list.find(x => (x.name === 'node' || x.name === nodeBinaryName) && x.path);
 	if (nodeProcess) {
 		t.true(nodeProcess.path.includes('node'), 'Node process path should contain node');
 		// Verify path is not just the truncated comm
